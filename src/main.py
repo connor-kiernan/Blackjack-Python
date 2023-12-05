@@ -23,8 +23,16 @@ def shuffle_deck():
         deck.extend(copiedDeck)
     random.shuffle(deck)
 
-def rank_to_value(rank):
-    if rank in ["Ace", "Jack", "Queen", "King"]:
+def rank_to_value(rank, hand):
+    if rank == "Ace": #if hand contains an ace, work out if the hand total using Ace as 11 is > 21, if so we can use as as 1
+        hand_copy = hand.copy()
+        for i in range(len(hand)):
+            if hand[i][1] == "Ace":
+                hand_copy[i] = (hand[i][0], "11")
+        if total(hand_copy) > 21:
+            return 1
+        return 11
+    if rank in ["Jack", "Queen", "King"]:
         return 10
     else:
         return int(rank)
@@ -32,7 +40,7 @@ def rank_to_value(rank):
 def total(hand):
     total = 0
     for card in hand:
-        total += rank_to_value(card[1])
+        total += rank_to_value(card[1], hand)
     
     return total;
 
@@ -53,8 +61,8 @@ def get_and_display_options(isFirstTurn):
         options.append("d")
         print("[D]ouble down")
         
-        if(rank_to_value(players_hand[0][1]) ==
-           rank_to_value(players_hand[1][1])):
+        if (rank_to_value(players_hand[0][1], players_hand) ==
+           rank_to_value(players_hand[1][1], players_hand)):
             options.append("p")
             print("S[p]lit")
             
@@ -74,6 +82,9 @@ def get_player_choice(options):
     return get_player_choice(options)
         
 def process_players_turn(isFirstRound):
+    if total(players_hand) == 21:
+        return False
+    
     options = get_and_display_options(isFirstRound)
     player_choice = get_player_choice(options)
     
@@ -111,6 +122,16 @@ def process_dealers_turn():
     
     return total(dealers_hand) > 21
     
+def is_black_jack(hand):
+    if len(hand) != 2:
+        return False
+    
+    hand_values = []
+    for card in hand:
+        hand_values.append(rank_to_value(card[1], hand))
+    
+    return  sorted(hand_values) == [10,11]
+    
 
 def main():
     initialise_deck();
@@ -118,6 +139,9 @@ def main():
     playing = True;
     
     while(playing):
+        players_hand.clear()
+        dealers_hand.clear()
+        
         deal_initial_hand()
         print(players_hand)
         print(dealers_hand)
@@ -135,12 +159,21 @@ def main():
             if dealer_has_bust:
                 print("Win")
             else:
-                if total(players_hand) > total(dealers_hand):
-                    print("win")
+                player_turn_total = total(players_hand)
+                dealer_turn_total = total(dealers_hand)
+                
+                if is_black_jack(players_hand) and not(is_black_jack(dealers_hand)):
+                    print("Blackjack")
                 else:
-                    print("lose")
-            
-        playing = False;
+                    if player_turn_total == dealer_turn_total:
+                        print("push")
+                    elif player_turn_total > dealer_turn_total:
+                        print("win")
+                    else:
+                        print("lose")
+                        
+        
+        # playing = False;
            
 
 if __name__ == "__main__":
