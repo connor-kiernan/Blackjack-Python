@@ -29,6 +29,13 @@ def rank_to_value(rank):
     else:
         return int(rank)
 
+def total(hand):
+    total = 0
+    for card in hand:
+        total += rank_to_value(card[1])
+    
+    return total;
+
 def deal_card(hand):
     hand.append(deck.pop())
 
@@ -58,43 +65,51 @@ def get_and_display_options(isFirstTurn):
     return options;
 
 def get_player_choice(options):
-    player_choice = input().lower;
+    player_choice = input().lower()
     
     if player_choice in options:
-        return player_choice;
+        return player_choice
     
     print("Invalid choice")
     return get_player_choice(options)
         
-def play_first_turn():
-    options = get_and_display_options(True)
+def process_players_turn(isFirstRound):
+    options = get_and_display_options(isFirstRound)
     player_choice = get_player_choice(options)
     
     match(player_choice):
+            case "s":
+                print("stand")
+                
+                return False
+            case "d":
+                print("double down")
+                #doubleBet
+                deal_card(players_hand)
+                
+                return total(players_hand) > 21
             case "h":
                 print("hit")
                 deal_card(players_hand)
-            case "s":
-                print("stand")
-                # dealer_play()
-            case "d":
-                print("double down")
-                # deal_card(players_hand)
-                # # check bust
-                # dealer_play()
             case "i":
                 print("insurance")
                 # insurance_bet()
             case "p":
                 print("split")
                 # split()
+    print(players_hand)
     
-        
-                
-            
-            
-        
+    if total(players_hand) > 21:
+        return True;
     
+    return process_players_turn(False)  
+            
+        
+def process_dealers_turn():
+    while total(dealers_hand) < 17:
+        deal_card(dealers_hand)
+    
+    return total(dealers_hand) > 21
     
 
 def main():
@@ -106,26 +121,41 @@ def main():
         deal_initial_hand()
         print(players_hand)
         print(dealers_hand)
-        play_first_turn()
+        
+        player_has_bust = process_players_turn(True)
+        print(players_hand)
+        
+        if player_has_bust:
+            print("Lose")
+        else:
+            print("Dealer's turn")
+            dealer_has_bust = process_dealers_turn()
+            print(dealers_hand)
+
+            if dealer_has_bust:
+                print("Win")
+            else:
+                if total(players_hand) > total(dealers_hand):
+                    print("win")
+                else:
+                    print("lose")
+            
         playing = False;
-        
-        
-        
-        
+           
 
 if __name__ == "__main__":
     main()
 
 
 
-
+#check for natural bj
 # checkBust
 # hit
 # doubleDown, cant double down after first turn
 # split if cards are same rank, split aces can only double down, split aces + picture = 21, not blackjack
 # initialDeal
 # stand
-# check, blackjack 3 to 2, push
+# check, blackjack 3 to 2, push = draw
 # dealer(playerTotal)
 # if dealer gets ace, player can use up to half their stake as insureance, pays 2 to 1
 # dealer must draw until >= 17
