@@ -7,15 +7,16 @@ BASE_DECK = []
 deck = []
 dealers_hand = []
 players_hand = []
-bank = 1000;
-player_bet = 0;
+bank = 1000
+player_bet = 0
+insurance_bet = 0;
 
 def initialise_deck():
     for suit in SUITS:
         for rank in RANKS:
             BASE_DECK.append((suit, rank))
-    BASE_DECK.append(("", "JOKER"))
-    BASE_DECK.append(("", "JOKER"))
+    # BASE_DECK.append(("", "JOKER"))
+    # BASE_DECK.append(("", "JOKER"))
 
 def shuffle_deck():
     for _ in range(6):
@@ -50,18 +51,24 @@ def deal_initial_hand():
         deal_card(dealers_hand)
 
 def place_bet():
-    bet_str = input("Please enter your bet: ")
+    bet_str = input("Please enter your bet (or a negative number to stop playing): ")
 
     try:
         bet = int(bet_str)
 
-        if bet > bank:
+        global bank, player_bet
+        if (bet > bank):
             print("Bet too high")
             place_bet()
+        elif(bet == 0):
+            print("Bet too low")
+            place_bet()
         else:
-            player_bet = bet;
+            bank -= bet
+            player_bet = bet
     except ValueError:
         print("Please enter a whole numbers only")
+        place_bet()
 
 def get_and_display_options(isFirstTurn):
     options = ["h", "s"]
@@ -69,8 +76,9 @@ def get_and_display_options(isFirstTurn):
     print("[S]tand")
 
     if(isFirstTurn):
-        options.append("d")
-        print("[D]ouble down")
+        if(bank >= (player_bet * 2)): #player can afford to double down
+            options.append("d")
+            print("[D]ouble down")
 
         if (rank_to_value(players_hand[0][1]) ==
            rank_to_value(players_hand[1][1])):
@@ -92,7 +100,25 @@ def get_player_choice(options):
     print("Invalid choice")
     return get_player_choice(options)
 
-def process_players_turn(isFirstRound = False):
+def place_insurance_bet():
+    insurance_str = input("Please enter an amount of your current bet to use as insurance (you cannot use more that 50%): ")
+
+    try:
+        insurance = int(insurance_str)
+
+        global player_bet, insurance_bet
+        max = (player_bet / 2)
+        if (insurance > max):
+            print("The max you can stake for insurance is half your bet, " + str(max))
+            place_insurance_bet()
+        else:
+            insurance_bet = insurance
+            player_bet -= insurance_bet
+    except ValueError:
+        print("Please enter a whole number")
+        place_insurance_bet()
+
+def process_players_turn(isFirstRound = True):
     if total(players_hand) == 21:
         return False
 
@@ -101,21 +127,18 @@ def process_players_turn(isFirstRound = False):
 
     match(player_choice):
             case "s":
-                print("stand")
-
                 return False
             case "d":
-                print("double down")
-                #doubleBet
+                global player_bet, bank
+                bank -= player_bet
+                player_bet *= 2
                 deal_card(players_hand)
 
                 return total(players_hand) > 21
             case "h":
-                print("hit")
                 deal_card(players_hand)
             case "i":
-                print("insurance")
-                # insurance_bet()
+                place_insurance_bet()
     print(players_hand)
 
     if total(players_hand) > 21:
@@ -139,50 +162,74 @@ def is_black_jack(hand):
 
     return sorted(hand_values) == [10,11]
 
+def play_round():
+    player_has_bust = process_players_turn()
+    print(players_hand)
+
+    if player_has_bust:
+        return 0
+
+    print("Dealer's turn")
+    dealer_has_bust = process_dealers_turn()
+    print(dealers_hand)
+
+    if dealer_has_bust:
+        return player_bet * 2
+
+    player_turn_total = total(players_hand)
+    dealer_turn_total = total(dealers_hand)
+
+    if is_black_jack(players_hand) and not(is_black_jack(dealers_hand)):
+        print("Blackjack!")
+        return player_bet * 3
+
+    if player_turn_total == dealer_turn_total:
+        return player_bet
+
+    if player_turn_total > dealer_turn_total:
+        return player_bet * 2
+
+    return 0
+
+
 def main():
     initialise_deck()
     shuffle_deck()
     playing = True
 
+    global player_bet, bank
     while(playing):
         players_hand.clear()
         dealers_hand.clear()
         player_bet = 0
 
-        place_bet();
+        print("You have " + str(bank) + " remaining")
 
-        deal_initial_hand()
-        print(players_hand, total(players_hand))
-        print(dealers_hand, total(dealers_hand))
+        place_bet()
 
-        player_has_bust = process_players_turn()
-        print(players_hand)
+        if(player_bet > 0):
+            deal_initial_hand()
 
-        if player_has_bust:
-            print("Lose")
-        else:
-            print("Dealer's turn")
-            dealer_has_bust = process_dealers_turn()
-            print(dealers_hand)
+            print(players_hand, total(players_hand))
+            print(dealers_hand, total(dealers_hand))
 
-            if dealer_has_bust:
-                print("Win")
+            winnings = play_round()
+
+            bank += winnings
+
+            if(winnings > player_bet):
+                print("Congrats, you won: " + str(winnings))
+            elif(winnings == player_bet):
+                print("Push! Your bet has been returned")
             else:
-                player_turn_total = total(players_hand)
-                dealer_turn_total = total(dealers_hand)
+                print("You lose!")
 
-                if is_black_jack(players_hand) and not(is_black_jack(dealers_hand)):
-                    print("Blackjack")
-                else:
-                    if player_turn_total == dealer_turn_total:
-                        print("push")
-                    elif player_turn_total > dealer_turn_total:
-                        print("win")
-                    else:
-                        print("lose")
+            if(bank <= 0):
+                playing = False
+        else:
+            playing = False
 
-
-        # playing = False;
+    print("Thanks for playing :)")
 
 
 if __name__ == "__main__":
